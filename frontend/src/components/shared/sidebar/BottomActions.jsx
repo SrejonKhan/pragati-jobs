@@ -10,16 +10,16 @@ const BottomActions = ({ isCollapsed, setShowNotifications }) => {
         <Button
           variant="ghost"
           size="icon"
-          className="relative"
+          className="relative text-[#006a4e] hover:bg-[#aaffdd] hover:text-[#006a4e]"
           onClick={() => setShowNotifications(prev => !prev)}
         >
           <BellIcon className="h-5 w-5" />
-          <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-red-500 text-[10px] text-white flex items-center justify-center">
+          <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-[#f42a41] text-[10px] text-white flex items-center justify-center">
             3
           </span>
         </Button>
         {!isCollapsed && (
-          <Button variant="ghost" className="text-red-600 hover:text-red-700 hover:bg-red-50">
+          <Button variant="ghost" className="text-[#f42a41] hover:text-[#d1253a] hover:bg-[#ffdddd]">
             <LogOut className="h-5 w-5" />
             <span className="ml-2">Logout</span>
           </Button>

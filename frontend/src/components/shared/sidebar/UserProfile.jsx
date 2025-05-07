@@ -20,18 +20,18 @@ const UserProfile = ({ isCollapsed }) => {
           <img 
             src={user.userProfile.avatarUrl} 
             alt={user.displayName}
-            className="h-10 w-10 rounded-full object-cover flex-shrink-0"
+            className="h-10 w-10 rounded-full object-cover flex-shrink-0 border-2 border-[#006a4e]"
           />
         ) : (
-          <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
-            <span className="text-blue-600 font-semibold">
+          <div className="h-10 w-10 rounded-full bg-[#aaffdd] flex items-center justify-center flex-shrink-0 border-2 border-[#006a4e]">
+            <span className="text-[#006a4e] font-semibold">
               {user.displayName?.[0]?.toUpperCase()}
             </span>
           </div>
         )}
         {!isCollapsed && (
           <div>
-            <p className="font-medium">{user.displayName}</p>
+            <p className="font-medium text-[#006a4e]">{user.displayName}</p>
             <p className="text-sm text-gray-600">
               {user.userProfile?.department || 'Student'}
             </p>

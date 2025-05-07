@@ -42,7 +42,9 @@ const Navigation = ({ isCollapsed }) => {
                       key={child.path}
                       href={child.path}
                       className={`flex items-center px-3 py-2 rounded-md text-sm transition-colors ${
-                        pathname === child.path ? "bg-blue-50 text-blue-600" : "text-gray-600 hover:bg-gray-100"
+                        pathname === child.path 
+                          ? "bg-[#aaffdd] text-[#006a4e] font-medium" 
+                          : "text-gray-600 hover:bg-gray-100"
                       }`}
                     >
                       <child.icon className="h-4 w-4" />
@@ -56,10 +58,12 @@ const Navigation = ({ isCollapsed }) => {
             <Link
               href={item.path}
               className={`flex items-center px-3 py-2 rounded-md transition-colors ${isCollapsed ? "justify-center" : ""} ${
-                pathname === item.path ? "bg-blue-50 text-blue-600" : "text-gray-600 hover:bg-gray-100"
+                pathname === item.path 
+                  ? "bg-[#aaffdd] text-[#006a4e] font-medium" 
+                  : "text-gray-600 hover:bg-[#f5f5f5]"
               }`}
             >
-              <item.icon className="h-5 w-5" />
+              <item.icon className={`h-5 w-5 ${pathname === item.path ? "text-[#006a4e]" : ""}`} />
               {!isCollapsed && <span className="ml-3">{item.name}</span>}
             </Link>
           )}

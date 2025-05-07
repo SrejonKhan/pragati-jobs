@@ -1,8 +1,8 @@
 "use client"
 
 import { useState } from "react"
-import { motion } from "framer-motion"
 import { useRouter } from "next/navigation"
+import Link from "next/link"
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -18,7 +18,9 @@ export default function LoginPage() {
     email: "",
     password: ""
   })
+  const [rememberMe, setRememberMe] = useState(false)
   const router = useRouter()
+  const [error, setError] = useState("")
 
   const handleChange = (e) => {
     const { name, value } = e.target
@@ -31,6 +33,7 @@ export default function LoginPage() {
   const handleSubmit = async (e) => {
     e.preventDefault()
     setIsLoading(true)
+    setError("")
 
     try {
       const response = await fetch('http://localhost:2222/api/v1/auth/signin', {
@@ -69,11 +72,7 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white flex items-center justify-center p-4">
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-      >
+      <div className="opacity-100">
         <Card className="w-[380px] shadow-xl">
           <CardHeader className="space-y-3 items-center">
             <div className="w-24 h-24 relative">
@@ -94,6 +93,11 @@ export default function LoginPage() {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
+              {error && (
+                <div className="bg-red-50 border-l-4 border-red-500 p-4">
+                  <p className="text-red-500 text-sm">{error}</p>
+                </div>
+              )}
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
                 <Input
@@ -135,6 +139,32 @@ export default function LoginPage() {
                   </button>
                 </div>
               </div>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <input
+                    id="remember-me"
+                    name="remember-me"
+                    type="checkbox"
+                    checked={rememberMe}
+                    onChange={() => setRememberMe(!rememberMe)}
+                    className="h-4 w-4 text-[#d35400] focus:ring-[#d35400] border-gray-300 rounded"
+                  />
+                  <label
+                    htmlFor="remember-me"
+                    className="ml-2 block text-sm text-gray-900"
+                  >
+                    Remember me
+                  </label>
+                </div>
+                <div className="text-sm">
+                  <a
+                    href="#"
+                    className="font-medium text-[#d35400] hover:text-[#b34500]"
+                  >
+                    Forgot your password?
+                  </a>
+                </div>
+              </div>
               <Button
                 type="submit"
                 className="w-full bg-blue-600 hover:bg-blue-700"
@@ -152,12 +182,15 @@ export default function LoginPage() {
             </form>
           </CardContent>
           <CardFooter className="flex flex-col gap-2 text-sm text-center">
-            <a
-              href="#"
-              className="text-blue-600 hover:underline hover:text-blue-700"
-            >
-              Forgot your password?
-            </a>
+            <p className="text-muted-foreground">
+              Don't have an account?{" "}
+              <Link 
+                href="/register" 
+                className="text-blue-600 hover:underline hover:text-blue-700"
+              >
+                Sign up now
+              </Link>
+            </p>
             <p className="text-muted-foreground">
               Need help?{" "}
               <a
@@ -169,7 +202,7 @@ export default function LoginPage() {
             </p>
           </CardFooter>
         </Card>
-      </motion.div>
+      </div>
     </div>
   )
 }
