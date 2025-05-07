@@ -2,67 +2,81 @@ import { NextResponse } from 'next/server';
 import OpenAI from 'openai';
 
 const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
+  apiKey: process.env.OPENAI_API_KEY
 });
 
 export async function POST(request) {
   try {
     const formData = await request.formData();
     const video = formData.get('video');
-    const transcription = formData.get('transcription');
+    const transcription = formData.get('transcription') || "No transcription available";
+    const question = formData.get('question') || "Unknown question";
+    const model = formData.get('model') || 'gpt-4o-realtime-preview';
 
-    if (!video) {
+    if (!video && !transcription) {
       return NextResponse.json(
-        { error: 'No video file provided' },
+        { error: 'Video or transcription is required' },
         { status: 400 }
       );
     }
 
-    // Use the actual transcription from speech recognition
-    const userTranscription = transcription || "No transcription available";
+    // Process the transcription with GPT-4o
+    const prompt = `
+      You are an expert interviewer and career coach providing detailed feedback on an interview response.
+      
+      The interview question was: "${question}"
+      
+      The candidate's response: "${transcription}"
+      
+      Analyze their response and provide professional feedback in the following structure:
+      
+      ## Response Analysis
+      [Brief 2-3 sentence summary of their overall response]
+      
+      ## Key Strengths
+      - [Strength 1: 1-2 sentences]
+      - [Strength 2: 1-2 sentences]
+      - [Strength 3: 1-2 sentences if applicable]
+      
+      ## Areas for Improvement
+      - [Area 1: 1-2 sentences with specific suggestion]
+      - [Area 2: 1-2 sentences with specific suggestion]
+      - [Area 3: 1-2 sentences if applicable]
+      
+      ## Language and Delivery
+      [Analysis of communication style, clarity, confidence, etc.]
+      
+      ## Sample Improved Response
+      [Provide a brief example of a stronger response that maintains their style but addresses weaknesses]
+      
+      ## Overall Rating
+      [Provide a rating out of 10 and 1-2 sentence final assessment]
+    `;
 
-    // Process with GPT-4
     const completion = await openai.chat.completions.create({
-      model: "gpt-4",
+      model,
       messages: [
-        {
-          role: "system",
-          content: `You are an expert interviewer and career coach. Analyze the candidate's response and provide constructive feedback. 
-          Focus on: 
-          1. Content relevance
-          2. Communication clarity
-          3. Specific improvements
-          4. Positive aspects
-          
-          Format your response in clear sections:
-          - Key Points Covered:
-          - Strengths:
-          - Areas for Improvement:
-          - Overall Impression:
-          
-          Keep the feedback concise, constructive, and actionable.`
+        { 
+          role: "system", 
+          content: "You are an expert interviewer and career coach providing detailed, constructive, and actionable feedback to help candidates improve their interview skills." 
         },
-        {
-          role: "user",
-          content: userTranscription
-        }
+        { role: "user", content: prompt }
       ],
-      max_tokens: 500,
       temperature: 0.7,
     });
 
-    const feedback = completion.choices[0].message.content;
+    // Extract feedback from GPT-4o response
+    const feedback = completion.choices[0].message.content.trim();
 
-    return NextResponse.json({
-      success: true,
-      transcription: userTranscription,
-      feedback: feedback
+    return NextResponse.json({ 
+      success: true, 
+      transcription,
+      feedback 
     });
-
   } catch (error) {
     console.error('Error processing interview:', error);
     return NextResponse.json(
-      { error: 'Failed to process interview' },
+      { error: error.message || 'Error processing interview' },
       { status: 500 }
     );
   }

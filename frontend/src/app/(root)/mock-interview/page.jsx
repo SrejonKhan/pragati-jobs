@@ -3,6 +3,12 @@
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 
+// Configuration for OpenAI services
+const OPENAI_CONFIG = {
+  whisperModel: 'whisper-1',
+  gptModel: 'gpt-4o-realtime-preview'
+};
+
 const mockQuestions = [
   {
     id: 1,
@@ -32,28 +38,125 @@ const mockQuestions = [
 ];
 
 const HumanInterviewer = ({ isAsking, question, onQuestionStart }) => {
+  // Create a ref to track if we've initialized speech synthesis
+  const speechInitialized = useRef(false);
+  const [fallbackMode, setFallbackMode] = useState(false);
+  
+  // Load voices when component mounts
   useEffect(() => {
-    if (isAsking && question) {
-      const utterance = new SpeechSynthesisUtterance(question);
-      // Set voice preferences
+    function loadVoices() {
+      // Get all available voices
       const voices = window.speechSynthesis.getVoices();
-      const preferredVoice = voices.find(voice => 
-        voice.name.includes('Female') || voice.name.includes('en-US')
-      ) || voices[0];
-      
-      if (preferredVoice) {
-        utterance.voice = preferredVoice;
-        utterance.rate = 0.9; // Slightly slower for clarity
-        utterance.pitch = 1.1; // Slightly higher pitch for professionalism
+      if (voices.length > 0) {
+        speechInitialized.current = true;
+      } else {
+        // If no voices are available, switch to fallback mode
+        setFallbackMode(true);
       }
-
-      utterance.onstart = () => onQuestionStart();
-      window.speechSynthesis.speak(utterance);
     }
+    
+    // Try to load voices immediately
+    loadVoices();
+    
+    // Also listen for voiceschanged event (which fires when voices are actually loaded)
+    if (typeof window !== 'undefined' && window.speechSynthesis) {
+      window.speechSynthesis.onvoiceschanged = loadVoices;
+    } else {
+      setFallbackMode(true);
+    }
+    
     return () => {
-      window.speechSynthesis.cancel(); // Cancel any ongoing speech when component updates
+      if (typeof window !== 'undefined' && window.speechSynthesis) {
+        window.speechSynthesis.onvoiceschanged = null;
+      }
     };
-  }, [isAsking, question, onQuestionStart]);
+  }, []);
+  
+  // Handle speaking when question changes or avatar starts speaking
+  useEffect(() => {
+    if (!isAsking || !question) return;
+    
+    // For fallback mode, still trigger the question start handler
+    if (fallbackMode) {
+      onQuestionStart();
+      return;
+    }
+    
+    // Ensure speech synthesis is available
+    if (typeof window === 'undefined' || !window.speechSynthesis) {
+      setFallbackMode(true);
+      onQuestionStart();
+      return;
+    }
+    
+    // Cancel any ongoing speech
+    try {
+      window.speechSynthesis.cancel();
+    } catch (e) {
+      setFallbackMode(true);
+      onQuestionStart();
+      return;
+    }
+    
+    // Use a short timeout to ensure the UI is ready
+    const timeoutId = setTimeout(() => {
+      try {
+        // Create a new utterance for the question
+        const utterance = new SpeechSynthesisUtterance(question);
+        
+        // Set properties for clear speech
+        utterance.rate = 0.9;
+        utterance.pitch = 1.1;
+        utterance.volume = 1.0;
+        
+        // Set event handlers
+        utterance.onstart = () => {
+          onQuestionStart();
+        };
+        
+        utterance.onerror = () => {
+          // Switch to fallback mode on any error
+          setFallbackMode(true);
+          onQuestionStart();
+        };
+        
+        // Try to find a good English voice
+        try {
+          const voices = window.speechSynthesis.getVoices();
+          if (voices && voices.length > 0) {
+            const preferredVoice = voices.find(v => 
+              (v.name.includes('English') || v.lang.includes('en')) && 
+              (v.name.includes('Female') || !v.name.includes('Male'))
+            ) || voices[0];
+            
+            if (preferredVoice) {
+              utterance.voice = preferredVoice;
+            }
+          }
+        } catch (e) {
+          // Continue with default voice if voice selection fails
+        }
+        
+        // Speak the utterance
+        window.speechSynthesis.speak(utterance);
+      } catch (error) {
+        // Switch to fallback mode on any error
+        setFallbackMode(true);
+        onQuestionStart();
+      }
+    }, 100);
+    
+    return () => {
+      clearTimeout(timeoutId);
+      if (typeof window !== 'undefined' && window.speechSynthesis) {
+        try {
+          window.speechSynthesis.cancel();
+        } catch (e) {
+          // Silently handle any cleanup errors
+        }
+      }
+    };
+  }, [isAsking, question, onQuestionStart, fallbackMode]);
 
   return (
     <div className="relative w-96 mx-auto">
@@ -63,30 +166,13 @@ const HumanInterviewer = ({ isAsking, question, onQuestionStart }) => {
           <div className="relative w-64 h-64 rounded-full overflow-hidden border-4 border-gray-200">
             {/* Using a professional interviewer image */}
             <img 
-              src="/images/interviewer-1.jpg" 
+              src="https://images.pexels.com/photos/5668858/pexels-photo-5668858.jpeg"
+              onError={(e) => {
+                e.target.onerror = null;
+                e.target.src = "https://images.pexels.com/photos/3760263/pexels-photo-3760263.jpeg";
+              }}
               alt="Professional Interviewer"
               className="w-full h-full object-cover"
-            />
-            {/* Fallback interviewer images in case the first one fails */}
-            <img 
-              src="/images/interviewer-2.jpg" 
-              alt="Professional Interviewer"
-              className="hidden"
-              onError={(e) => {
-                e.target.style.display = 'none';
-                const nextImg = e.target.nextElementSibling;
-                if (nextImg) nextImg.style.display = 'block';
-              }}
-            />
-            <img 
-              src="https://images.pexels.com/photos/5668858/pexels-photo-5668858.jpeg"
-              alt="Professional Interviewer"
-              className="hidden"
-              onError={(e) => {
-                e.target.style.display = 'none';
-                // If all images fail, show a fallback avatar
-                e.target.parentElement.innerHTML = '<div class="w-full h-full bg-gray-200 flex items-center justify-center"><svg class="w-24 h-24 text-gray-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"></path></svg></div>';
-              }}
             />
           </div>
         </div>
@@ -105,12 +191,140 @@ const HumanInterviewer = ({ isAsking, question, onQuestionStart }) => {
   );
 };
 
+// A custom hook for handling speech recognition using Whisper API
+const useWhisperTranscription = (isRecording, isManualMode) => {
+  const [transcript, setTranscript] = useState('');
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [error, setError] = useState(null);
+  const audioChunksRef = useRef([]);
+  const mediaRecorderRef = useRef(null);
+  const processingIntervalRef = useRef(null);
+
+  // Start audio recording and processing
+  const startRecording = async () => {
+    if (isManualMode) return;
+    
+    try {
+      // Reset state
+      setTranscript('');
+      setError(null);
+      audioChunksRef.current = [];
+      
+      // Get audio stream
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      
+      // Set up media recorder
+      const recorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = recorder;
+      
+      // Collect audio chunks
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) {
+          audioChunksRef.current.push(e.data);
+        }
+      };
+      
+      // Start recording
+      recorder.start(1000); // Collect chunks every second
+      
+      // Set up periodic processing
+      processingIntervalRef.current = setInterval(() => {
+        if (audioChunksRef.current.length > 0) {
+          processAudioChunk();
+        }
+      }, 5000); // Process every 5 seconds
+      
+    } catch (err) {
+      setError('Failed to start audio recording');
+    }
+  };
+
+  // Stop recording
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      mediaRecorderRef.current.stop();
+    }
+    
+    if (processingIntervalRef.current) {
+      clearInterval(processingIntervalRef.current);
+    }
+    
+    // Process any remaining audio
+    if (audioChunksRef.current.length > 0) {
+      processAudioChunk(true); // Final processing
+    }
+  };
+
+  // Process collected audio chunks using Whisper API
+  const processAudioChunk = async (isFinal = false) => {
+    if (audioChunksRef.current.length === 0 || isProcessing) return;
+    
+    try {
+      setIsProcessing(true);
+      
+      // Prepare audio blob
+      const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+      
+      // Only process if we have enough audio data
+      if (audioBlob.size < 1024) {
+        if (!isFinal) {
+          setIsProcessing(false);
+          return;
+        }
+      }
+      
+      // Create form data for API request
+      const formData = new FormData();
+      formData.append('file', audioBlob, 'audio.webm');
+      formData.append('model', OPENAI_CONFIG.whisperModel);
+      
+      // Send to our backend API that will proxy to OpenAI
+      const response = await fetch('/api/transcribe', {
+        method: 'POST',
+        body: formData
+      });
+      
+      if (!response.ok) {
+        throw new Error('Transcription failed');
+      }
+      
+      const result = await response.json();
+      
+      if (result.text) {
+        setTranscript(prev => prev + ' ' + result.text);
+        // Clear processed chunks if not final
+        if (!isFinal) {
+          audioChunksRef.current = [];
+        }
+      }
+    } catch (err) {
+      setError('Failed to transcribe audio');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  // Set up and clean up recording based on isRecording state
+  useEffect(() => {
+    if (isRecording && !isManualMode) {
+      startRecording();
+    } else if (!isRecording && mediaRecorderRef.current) {
+      stopRecording();
+    }
+    
+    return () => {
+      stopRecording();
+    };
+  }, [isRecording, isManualMode]);
+
+  return { transcript, isProcessing, error };
+};
+
 export default function MockInterview() {
   const router = useRouter();
   const videoRef = useRef(null);
   const mediaRecorderRef = useRef(null);
   const chunksRef = useRef(null);
-  const recognitionRef = useRef(null);
   
   const [isStarted, setIsStarted] = useState(false);
   const [currentQuestion, setCurrentQuestion] = useState(0);
@@ -119,144 +333,43 @@ export default function MockInterview() {
   const [isRecording, setIsRecording] = useState(false);
   const [showHologram, setShowHologram] = useState(true);
   const [videoBlob, setVideoBlob] = useState(null);
-  const [transcription, setTranscription] = useState('');
   const [hasCamera, setHasCamera] = useState(true);
   const [currentCaption, setCurrentCaption] = useState('');
   const [fullTranscript, setFullTranscript] = useState('');
-  const [speechRecognitionSupported, setSpeechRecognitionSupported] = useState(true);
-  const [recognitionError, setRecognitionError] = useState(null);
   const [isManualMode, setIsManualMode] = useState(false);
   const [manualTranscript, setManualTranscript] = useState('');
-  const retryTimeoutRef = useRef(null);
-  const maxRetries = 3;
-  const [retryCount, setRetryCount] = useState(0);
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [isAvatarSpeaking, setIsAvatarSpeaking] = useState(false);
-  const [transcriptionError, setTranscriptionError] = useState(null);
-  const isTranscribing = useRef(false);
-
-  // Initialize speech recognition with improved error handling
+  const [realTimeFeedback, setRealTimeFeedback] = useState('');
+  
+  // Use the custom Whisper transcription hook
+  const { 
+    transcript: whisperTranscript, 
+    isProcessing: isWhisperProcessing, 
+    error: whisperError 
+  } = useWhisperTranscription(isRecording, isManualMode);
+  
+  // Update current caption and full transcript from Whisper results
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-        if (!SpeechRecognition) {
-          setSpeechRecognitionSupported(false);
-          setTranscriptionError('Speech recognition is not supported in your browser. Please use Chrome or Edge.');
-          return;
-        }
-
-        recognitionRef.current = new SpeechRecognition();
-        recognitionRef.current.continuous = true;
-        recognitionRef.current.interimResults = true;
-        recognitionRef.current.lang = 'en-US';
-
-        recognitionRef.current.onstart = () => {
-          isTranscribing.current = true;
-          setTranscriptionError(null);
-          console.log('Speech recognition started');
-        };
-
-        recognitionRef.current.onresult = (event) => {
-          let interimTranscript = '';
-          let finalTranscript = '';
-
-          for (let i = event.resultIndex; i < event.results.length; i++) {
-            const transcript = event.results[i][0].transcript;
-            if (event.results[i].isFinal) {
-              finalTranscript += transcript + ' ';
-              setFullTranscript(prev => prev + ' ' + transcript);
-            } else {
-              interimTranscript += transcript;
-            }
-          }
-
-          setCurrentCaption(interimTranscript);
-          if (finalTranscript) {
-            console.log('Final transcript:', finalTranscript);
-          }
-        };
-
-        recognitionRef.current.onerror = (event) => {
-          console.error('Speech recognition error:', event.error);
-          if (event.error === 'network') {
-            handleNetworkError();
-          } else {
-            setTranscriptionError(getErrorMessage(event.error));
-            if (event.error === 'not-allowed') {
-              setSpeechRecognitionSupported(false);
-            }
-          }
-        };
-
-        recognitionRef.current.onend = () => {
-          console.log('Speech recognition ended');
-          if (isRecording && !isManualMode && isTranscribing.current) {
-            console.log('Restarting speech recognition...');
-            startRecognition();
-          }
-          isTranscribing.current = false;
-        };
-
-      } catch (error) {
-        console.error('Speech recognition initialization error:', error);
-        setSpeechRecognitionSupported(false);
-        setTranscriptionError('Failed to initialize speech recognition. Please use Chrome or Edge.');
-      }
+    if (whisperTranscript && !isManualMode) {
+      setCurrentCaption(whisperTranscript);
+      setFullTranscript(whisperTranscript);
     }
-
-    return () => {
-      if (recognitionRef.current) {
-        recognitionRef.current.stop();
-      }
-    };
-  }, [isRecording, isManualMode]);
-
-  const getErrorMessage = (error) => {
-    switch (error) {
-      case 'not-allowed':
-        return 'Microphone access denied. Please enable microphone permissions.';
-      case 'no-speech':
-        return 'No speech detected. Please try speaking again.';
-      default:
-        return `Error: ${error}`;
-    }
-  };
-
-  const handleNetworkError = () => {
-    if (retryCount < maxRetries) {
-      setRetryCount(prev => prev + 1);
-      setRecognitionError(`Attempting to reconnect... (Attempt ${retryCount + 1}/${maxRetries})`);
-      retryTimeoutRef.current = setTimeout(() => {
-        restartRecognition();
-      }, 2000);
-    } else {
-      setRecognitionError('Speech recognition unavailable. Switched to manual mode.');
+  }, [whisperTranscript, isManualMode]);
+  
+  // Switch to manual mode if there's a Whisper error
+  useEffect(() => {
+    if (whisperError && isRecording) {
       setIsManualMode(true);
     }
-  };
-
-  const restartRecognition = () => {
-    if (recognitionRef.current && !isManualMode) {
-      try {
-        recognitionRef.current.stop();
-        recognitionRef.current.start();
-      } catch (e) {
-        console.warn('Failed to restart speech recognition:', e);
-        setIsManualMode(true);
-      }
-    }
-  };
-
+  }, [whisperError, isRecording]);
+  
   // Initialize video stream
   useEffect(() => {
     if (isStarted) {
       initializeCamera();
     }
     return () => {
-      if (recognitionRef.current) {
-        recognitionRef.current.stop();
-      }
+      // Cleanup resources
     };
   }, [isStarted]);
 
@@ -275,25 +388,19 @@ export default function MockInterview() {
     }
   };
 
-  // Modified startRecording function
+  // Start recording with Whisper integration
   const startRecording = async () => {
     if (!videoRef.current?.srcObject) return;
 
-    // Reset states
+    // Reset states for new recording
     setCurrentCaption('');
     setFullTranscript('');
     setManualTranscript('');
-    setTranscriptionError(null);
-    setRetryCount(0);
+    setRealTimeFeedback('');
     
-    // Start speech recognition
-    if (!isManualMode) {
-      startRecognition();
-    }
-
     // Start video recording
-    chunksRef.current = [];
     try {
+      chunksRef.current = [];
       const mediaRecorder = new MediaRecorder(videoRef.current.srcObject);
       
       mediaRecorder.ondataavailable = (event) => {
@@ -301,50 +408,49 @@ export default function MockInterview() {
           chunksRef.current.push(event.data);
         }
       };
-
+      
       mediaRecorder.onstop = async () => {
         const blob = new Blob(chunksRef.current, { type: 'video/webm' });
         setVideoBlob(blob);
         await processRecording(blob);
       };
-
+      
       mediaRecorder.start();
       mediaRecorderRef.current = mediaRecorder;
       setIsRecording(true);
-      console.log('Recording started');
+      
+      // Start real-time feedback process if not in manual mode
+      if (!isManualMode) {
+        startRealTimeFeedback();
+      }
     } catch (error) {
-      console.error('Error starting recording:', error);
-      setTranscriptionError('Failed to start recording. Please check your camera and microphone permissions.');
+      alert("Failed to start recording. Please check your camera and microphone permissions.");
     }
   };
-
+  
   // Stop recording
   const stopRecording = () => {
     if (mediaRecorderRef.current && isRecording) {
       mediaRecorderRef.current.stop();
-      if (recognitionRef.current && !isManualMode) {
-        recognitionRef.current.stop();
-      }
       
-      const blob = new Blob(chunksRef.current, { type: 'video/webm' });
-      setVideoBlob(blob);
-      
-      // Only process automatically if not in manual mode
-      if (!isManualMode) {
-        processRecording(blob);
+      // Use manual transcript if in manual mode
+      if (isManualMode) {
+        setFullTranscript(manualTranscript);
       }
       
       setIsRecording(false);
     }
   };
-
-  // Process recording with manual fallback
+  
+  // Process recording with GPT-4o
   const processRecording = async (blob) => {
     setIsProcessing(true);
     try {
       const formData = new FormData();
       formData.append('video', blob);
       formData.append('transcription', isManualMode ? manualTranscript : fullTranscript);
+      formData.append('model', OPENAI_CONFIG.gptModel);
+      formData.append('question', mockQuestions[currentQuestion].question);
       
       const response = await fetch('/api/process-interview', {
         method: 'POST',
@@ -354,25 +460,60 @@ export default function MockInterview() {
       if (!response.ok) throw new Error('Failed to process video');
       
       const data = await response.json();
-      setTranscription(data.transcription);
       setFeedback(data.feedback);
       
     } catch (error) {
-      console.error('Error processing video:', error);
       setFeedback('There was an error processing your response. Please try again.');
     } finally {
       setIsProcessing(false);
     }
   };
+  
+  // Get real-time feedback using GPT-4o
+  const startRealTimeFeedback = () => {
+    // Set up interval to periodically check transcript and provide feedback
+    const feedbackInterval = setInterval(async () => {
+      if (!isRecording || isManualMode || !fullTranscript) {
+        clearInterval(feedbackInterval);
+        return;
+      }
+      
+      try {
+        const response = await fetch('/api/real-time-feedback', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            transcription: fullTranscript,
+            question: mockQuestions[currentQuestion].question,
+            model: OPENAI_CONFIG.gptModel
+          })
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          setRealTimeFeedback(data.feedback);
+        }
+      } catch (error) {
+        // Silently handle real-time feedback errors
+      }
+    }, 8000); // Check every 8 seconds
+    
+    return () => clearInterval(feedbackInterval);
+  };
 
-  // Add manual submission handler
+  // Handle manual submission
   const handleManualSubmit = async () => {
     if (!manualTranscript.trim()) return;
     
-    setIsSubmitting(true);
+    setIsProcessing(true);
     try {
       const formData = new FormData();
       formData.append('transcription', manualTranscript);
+      formData.append('model', OPENAI_CONFIG.gptModel);
+      formData.append('question', mockQuestions[currentQuestion].question);
+      
       if (videoBlob) {
         formData.append('video', videoBlob);
       }
@@ -385,22 +526,22 @@ export default function MockInterview() {
       if (!response.ok) throw new Error('Failed to process response');
       
       const data = await response.json();
-      setTranscription(data.transcription);
       setFeedback(data.feedback);
     } catch (error) {
-      console.error('Error processing response:', error);
       setFeedback('There was an error processing your response. Please try again.');
     } finally {
-      setIsSubmitting(false);
+      setIsProcessing(false);
     }
   };
 
+  // Rest of the existing functions...
   const handleNext = () => {
     if (currentQuestion < mockQuestions.length - 1) {
       setCurrentQuestion(prev => prev + 1);
       setFeedback('');
       setVideoBlob(null);
-      setTranscription('');
+      setFullTranscript('');
+      setRealTimeFeedback('');
     } else {
       setIsStarted(false);
       setCurrentQuestion(0);
@@ -411,69 +552,24 @@ export default function MockInterview() {
     setIsStarted(true);
     setShowHologram(true);
   };
-
+  
+  // Handle question start
+  const handleQuestionStart = () => {
+    // Implementation remains the same
+  };
+  
   // Add speaking animation when changing questions
   useEffect(() => {
     if (isStarted) {
       setIsAvatarSpeaking(true);
       const timer = setTimeout(() => {
         setIsAvatarSpeaking(false);
-      }, 3000);
+      }, 5000); // Allow more time for speech synthesis
       return () => clearTimeout(timer);
     }
   }, [currentQuestion, isStarted]);
 
-  // Add styles for avatar animations
-  useEffect(() => {
-    const style = document.createElement('style');
-    style.textContent = `
-      .interviewer-container {
-        position: relative;
-        padding: 2rem;
-      }
-
-      .interviewer-avatar {
-        position: relative;
-        transition: all 0.3s ease;
-      }
-
-      .interviewer-avatar.speaking {
-        animation: subtle-speak 1s infinite alternate;
-      }
-
-      @keyframes subtle-speak {
-        0% { transform: scale(1); }
-        100% { transform: scale(1.02); }
-      }
-    `;
-    document.head.appendChild(style);
-    return () => document.head.removeChild(style);
-  }, []);
-
-  const startRecognition = () => {
-    if (recognitionRef.current && !isManualMode) {
-      try {
-        recognitionRef.current.start();
-        console.log('Starting speech recognition...');
-      } catch (error) {
-        console.error('Error starting speech recognition:', error);
-        setTranscriptionError('Failed to start speech recognition. Please try again.');
-      }
-    }
-  };
-
-  // Handle question start
-  const handleQuestionStart = () => {
-    if (recognitionRef.current && isRecording) {
-      recognitionRef.current.stop(); // Stop previous recognition
-      setTimeout(() => {
-        if (isRecording && !isManualMode) {
-          startRecognition(); // Restart recognition after question
-        }
-      }, 500);
-    }
-  };
-
+  // Return the JSX, now with real-time feedback section
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-900 to-gray-800 text-white py-8 px-4">
       <div className="max-w-4xl mx-auto">
@@ -484,7 +580,7 @@ export default function MockInterview() {
             </h1>
             <p className="text-gray-300">
               Practice your interview skills with our AI interviewer.
-              Record your responses and get real-time feedback powered by AI.
+              Get real-time transcription with Whisper and feedback powered by GPT-4o.
             </p>
             <button
               onClick={startInterview}
@@ -495,6 +591,7 @@ export default function MockInterview() {
           </div>
         ) : (
           <div className="space-y-8">
+            {/* Human Interviewer */}
             <div className="relative flex justify-center">
               <HumanInterviewer 
                 isAsking={isAvatarSpeaking}
@@ -502,20 +599,20 @@ export default function MockInterview() {
                 onQuestionStart={handleQuestionStart}
               />
             </div>
-
-            {/* Add transcription error display */}
-            {transcriptionError && !isManualMode && (
-              <div className="p-4 bg-yellow-500 bg-opacity-20 border border-yellow-500 border-opacity-20 rounded-lg">
-                <p className="text-yellow-200 mb-2">{transcriptionError}</p>
+            
+            {/* Whisper error notification */}
+            {whisperError && !isManualMode && (
+              <div className="p-3 bg-yellow-500 bg-opacity-20 border border-yellow-500 border-opacity-20 rounded-lg mb-2">
+                <p className="text-yellow-200 text-sm">Transcription service unavailable. Consider switching to manual mode.</p>
                 <button
                   onClick={() => setIsManualMode(true)}
-                  className="text-yellow-200 underline hover:text-yellow-300"
+                  className="text-yellow-200 underline text-sm hover:text-yellow-300 mt-1"
                 >
-                  Switch to manual transcription
+                  Switch to manual mode
                 </button>
               </div>
             )}
-
+            
             {/* Video and Question Section */}
             <div className="space-y-6 bg-gray-800 bg-opacity-50 p-6 rounded-lg backdrop-blur-lg border border-[#d35400] border-opacity-20">
               <div className="space-y-2">
@@ -525,7 +622,7 @@ export default function MockInterview() {
                 </h2>
               </div>
 
-              {/* Video Preview with Captions or Manual Input */}
+              {/* Video Preview */}
               <div className="relative">
                 <div className="video-container aspect-video">
                   {hasCamera ? (
@@ -544,23 +641,32 @@ export default function MockInterview() {
                       Camera access is required for the interview
                     </div>
                   )}
+                  
+                  {/* Real-time captions */}
+                  {currentCaption && isRecording && !isManualMode && (
+                    <div className="absolute bottom-4 left-4 right-4 z-10">
+                      <div className="bg-black bg-opacity-75 p-3 rounded-lg">
+                        <p className="text-white text-center">{currentCaption}</p>
+                      </div>
+                    </div>
+                  )}
                 </div>
-
-                {/* Modified Manual Input Section */}
-                {isManualMode && (
-                  <div className="mt-4">
-                    <textarea
-                      value={manualTranscript}
-                      onChange={(e) => setManualTranscript(e.target.value)}
-                      placeholder="Type your response here..."
-                      className="w-full p-4 bg-gray-700 bg-opacity-50 text-white rounded-lg border border-gray-600 focus:border-[#d35400] focus:ring-1 focus:ring-[#d35400] resize-none min-h-[120px]"
-                      rows={4}
-                    />
-                  </div>
-                )}
               </div>
+              
+              {/* Manual mode textarea */}
+              {isManualMode && (
+                <div className="mt-4">
+                  <textarea
+                    value={manualTranscript}
+                    onChange={(e) => setManualTranscript(e.target.value)}
+                    placeholder="Type your response here..."
+                    className="w-full p-4 bg-gray-700 bg-opacity-50 text-white rounded-lg border border-gray-600 focus:border-[#d35400] focus:ring-1 focus:ring-[#d35400] resize-none min-h-[120px]"
+                    rows={4}
+                  />
+                </div>
+              )}
 
-              {/* Modified Controls */}
+              {/* Controls */}
               <div className="flex flex-wrap gap-4">
                 {!isRecording ? (
                   <>
@@ -568,18 +674,18 @@ export default function MockInterview() {
                       <>
                         <button
                           onClick={handleManualSubmit}
-                          disabled={!manualTranscript.trim() || isSubmitting}
+                          disabled={!manualTranscript.trim() || isProcessing}
                           className={`flex-1 bd-button ${
-                            !manualTranscript.trim() || isSubmitting ? 'opacity-50 cursor-not-allowed' : ''
+                            !manualTranscript.trim() || isProcessing ? 'opacity-50 cursor-not-allowed' : ''
                           }`}
                         >
-                          {isSubmitting ? 'Processing...' : 'Submit Response'}
+                          {isProcessing ? 'Processing...' : 'Submit Response'}
                         </button>
                         <button
                           onClick={() => setIsManualMode(false)}
                           className="px-4 py-2 border border-[#006064] text-[#006064] rounded-lg hover:bg-[#006064] hover:bg-opacity-10 transition-colors"
                         >
-                          Try Auto Transcription
+                          Try Whisper Transcription
                         </button>
                       </>
                     ) : (
@@ -622,48 +728,38 @@ export default function MockInterview() {
               </div>
 
               {/* Processing State */}
-              {(isProcessing || isSubmitting) && (
+              {(isProcessing || isWhisperProcessing) && (
                 <div className="text-center py-4">
                   <div className="animate-spin rounded-full h-8 w-8 border-2 border-[#d35400] border-t-transparent mx-auto"></div>
                   <p className="mt-2 text-gray-400">
-                    {isSubmitting ? 'Processing your response...' : 'Analyzing your response...'}
+                    {isProcessing ? 'Analyzing your response...' : 'Transcribing your speech...'}
                   </p>
                 </div>
               )}
 
               {/* Transcription Display */}
-              {manualTranscript && isManualMode && !isRecording && (
+              {!isRecording && fullTranscript && (
                 <div className="mt-4 p-4 bg-gray-700 bg-opacity-50 rounded-lg">
-                  <h3 className="text-sm font-medium text-gray-300 mb-2">Your Response:</h3>
-                  <p className="text-white">{manualTranscript}</p>
+                  <h3 className="text-sm font-medium text-gray-300 mb-2">Your Response (Whisper Transcription):</h3>
+                  <p className="text-white">{fullTranscript}</p>
+                </div>
+              )}
+              
+              {/* Real-time Feedback Display */}
+              {isRecording && realTimeFeedback && !isManualMode && (
+                <div className="mt-4 p-4 bg-[#006064] bg-opacity-5 rounded-lg border border-[#006064] border-opacity-10">
+                  <h3 className="text-sm font-medium text-[#006064] mb-2">Real-time Feedback:</h3>
+                  <p className="text-[#006064] text-sm">{realTimeFeedback}</p>
                 </div>
               )}
 
-              {/* Feedback Section */}
+              {/* Final Feedback Section */}
               {feedback && (
                 <div className="mt-4 p-4 bg-[#006064] bg-opacity-10 rounded-lg border border-[#006064] border-opacity-20">
-                  <h3 className="text-sm font-medium text-[#006064] mb-2">AI Feedback:</h3>
+                  <h3 className="text-sm font-medium text-[#006064] mb-2">AI Feedback (GPT-4o):</h3>
                   <p className="text-[#006064] whitespace-pre-line">{feedback}</p>
                 </div>
               )}
-            </div>
-
-            {/* Speech Recognition Status */}
-            {!speechRecognitionSupported && (
-              <div className="p-4 bg-yellow-500 bg-opacity-20 border border-yellow-500 border-opacity-20 rounded-lg">
-                <p className="text-yellow-200">
-                  Speech recognition is not supported in your browser. Captions will not be available.
-                  Try using Chrome or Edge for the best experience.
-                </p>
-              </div>
-            )}
-
-            {/* Progress Bar */}
-            <div className="w-full bg-gray-700 rounded-full h-2">
-              <div
-                className="bg-gradient-to-r from-[#d35400] to-[#006064] h-2 rounded-full transition-all duration-500"
-                style={{ width: `${((currentQuestion + 1) / mockQuestions.length) * 100}%` }}
-              ></div>
             </div>
           </div>
         )}
