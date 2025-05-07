@@ -1,0 +1,353 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                     String                  @id @default(auto()) @map("_id") @db.ObjectId
+  createdAt              DateTime                @default(now())
+  email                  String                  @unique
+  username               String                  @unique
+  displayName            String?
+  passwordHash           String
+  role                   Role                    @default(LEARNER)
+  authType               AuthType                @default(EMAILPASS)
+  profile                Profile?
+  changePasswordRequests ChangePasswordRequest[]
+  skills                 UserSkill[]
+  courses                UserCourse[]
+  jobs                   UserJob[]
+  projects               Project[]
+  mentorships            Mentorship[]            @relation("Mentor")
+  menteeships            Mentorship[]            @relation("Mentee")
+  posts                  Post[]
+  comments               Comment[]
+}
+
+enum Role {
+  ADMIN
+  LEARNER
+  EDUCATOR
+  EMPLOYER
+}
+
+enum AuthType {
+  EMAILPASS
+  OAUTH
+}
+
+model Profile {
+  id                String       @id @default(auto()) @map("_id") @db.ObjectId
+  bio               String?
+  career            CareerInfo?
+  education         Education[]
+  workExperience    Experience[]
+  location          String?
+  avatarUrl         String?
+  socialLinks       SocialLink[]
+  isOpenToWork      Boolean      @default(false)
+  isOpenToMentor    Boolean      @default(false)
+  completedCourses  Int          @default(0)
+  ongoingCourses    Int          @default(0)
+  employmentStatus  String       @default("Seeking Opportunities")
+  user              User         @relation(fields: [userId], references: [id])
+  userId            String       @unique @db.ObjectId
+}
+
+model CareerInfo {
+  id               String  @id @default(auto()) @map("_id") @db.ObjectId
+  currentPosition  String?
+  yearsExperience  Int?
+  fieldOfExpertise String?
+  careerGoals      String?
+  profile          Profile @relation(fields: [profileId], references: [id])
+  profileId        String  @unique @db.ObjectId
+}
+
+model Education {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  institution String
+  degree     String
+  fieldOfStudy String
+  startDate  DateTime
+  endDate    DateTime?
+  description String?
+  profile    Profile  @relation(fields: [profileId], references: [id])
+  profileId  String   @db.ObjectId
+}
+
+model Experience {
+  id             String   @id @default(auto()) @map("_id") @db.ObjectId
+  company        String
+  position       String
+  startDate      DateTime
+  endDate        DateTime?
+  description    String?
+  skills         String[]
+  profile        Profile  @relation(fields: [profileId], references: [id])
+  profileId      String   @db.ObjectId
+}
+
+model SocialLink {
+  id          String         @id @default(auto()) @map("_id") @db.ObjectId
+  url         String
+  host        SocialLinkHost @default(UNKNOWN)
+  profile     Profile        @relation(fields: [profileId], references: [id])
+  profileId   String         @db.ObjectId
+}
+
+enum SocialLinkHost {
+  LINKEDIN
+  GITHUB
+  FACEBOOK
+  INSTAGRAM
+  MAIL
+  TWITTER
+  PORTFOLIO
+  UNKNOWN
+}
+
+model ChangePasswordRequest {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  token        String   @unique
+  reqIpAddress String
+  requestedAt  DateTime @default(now())
+  user         User     @relation(fields: [userId], references: [id])
+  userId       String   @unique @db.ObjectId
+}
+
+model Skill {
+  id           String      @id @default(auto()) @map("_id") @db.ObjectId
+  name         String      @unique
+  category     SkillCategory
+  description  String?
+  userSkills   UserSkill[]
+  courseSkills CourseSkill[]
+  jobSkills    JobSkill[]
+}
+
+enum SkillCategory {
+  TECHNICAL
+  SOFT
+  LANGUAGE
+  INDUSTRY
+  OTHER
+}
+
+model UserSkill {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  proficiency Int      @default(1) // 1-5 scale
+  userId      String   @db.ObjectId
+  skillId     String   @db.ObjectId
+  user        User     @relation(fields: [userId], references: [id])
+  skill       Skill    @relation(fields: [skillId], references: [id])
+
+  @@unique([userId, skillId])
+}
+
+model Course {
+  id          String        @id @default(auto()) @map("_id") @db.ObjectId
+  title       String
+  description String
+  instructor  String
+  duration    Int           // In hours
+  level       CourseLevel
+  category    String
+  price       Float?
+  rating      Float?
+  enrollments UserCourse[]
+  skills      CourseSkill[]
+  modules     Module[]
+}
+
+enum CourseLevel {
+  BEGINNER
+  INTERMEDIATE
+  ADVANCED
+}
+
+model Module {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  title       String
+  description String
+  content     String   // Could be markdown or HTML
+  order       Int
+  duration    Int      // In minutes
+  course      Course   @relation(fields: [courseId], references: [id])
+  courseId    String   @db.ObjectId
+}
+
+model CourseSkill {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  courseId    String   @db.ObjectId
+  skillId     String   @db.ObjectId
+  course      Course   @relation(fields: [courseId], references: [id])
+  skill       Skill    @relation(fields: [skillId], references: [id])
+
+  @@unique([courseId, skillId])
+}
+
+model UserCourse {
+  id              String       @id @default(auto()) @map("_id") @db.ObjectId
+  enrollmentDate  DateTime     @default(now())
+  completionDate  DateTime?
+  progress        Int          @default(0) // Percentage
+  status          CourseStatus @default(ENROLLED)
+  userId          String       @db.ObjectId
+  courseId        String       @db.ObjectId
+  user            User         @relation(fields: [userId], references: [id])
+  course          Course       @relation(fields: [courseId], references: [id])
+
+  @@unique([userId, courseId])
+}
+
+enum CourseStatus {
+  ENROLLED
+  IN_PROGRESS
+  COMPLETED
+  DROPPED
+}
+
+model Job {
+  id              String      @id @default(auto()) @map("_id") @db.ObjectId
+  title           String
+  company         String
+  location        String
+  description     String
+  requirements    String
+  salary          String?
+  jobType         JobType
+  experienceLevel String
+  postedDate      DateTime    @default(now())
+  deadline        DateTime?
+  status          JobStatus   @default(OPEN)
+  applicants      UserJob[]
+  skills          JobSkill[]
+}
+
+enum JobType {
+  FULL_TIME
+  PART_TIME
+  CONTRACT
+  INTERNSHIP
+  REMOTE
+  HYBRID
+}
+
+enum JobStatus {
+  OPEN
+  CLOSED
+  FILLED
+}
+
+model JobSkill {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  jobId       String   @db.ObjectId
+  skillId     String   @db.ObjectId
+  job         Job      @relation(fields: [jobId], references: [id])
+  skill       Skill    @relation(fields: [skillId], references: [id])
+
+  @@unique([jobId, skillId])
+}
+
+model UserJob {
+  id              String        @id @default(auto()) @map("_id") @db.ObjectId
+  applicationDate DateTime      @default(now())
+  status          ApplicationStatus @default(APPLIED)
+  resumeUrl       String?
+  coverLetter     String?
+  userId          String        @db.ObjectId
+  jobId           String        @db.ObjectId
+  user            User          @relation(fields: [userId], references: [id])
+  job             Job           @relation(fields: [jobId], references: [id])
+
+  @@unique([userId, jobId])
+}
+
+enum ApplicationStatus {
+  APPLIED
+  REVIEWING
+  SHORTLISTED
+  INTERVIEWED
+  OFFERED
+  ACCEPTED
+  REJECTED
+}
+
+model Project {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  title       String
+  description String
+  technologies String[]
+  imageUrl    String?
+  githubUrl   String?
+  liveUrl     String?
+  startDate   DateTime
+  endDate     DateTime?
+  userId      String   @db.ObjectId
+  user        User     @relation(fields: [userId], references: [id])
+}
+
+model Mentorship {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  startDate    DateTime @default(now())
+  endDate      DateTime?
+  status       MentorshipStatus @default(ACTIVE)
+  focus        String
+  notes        String?
+  mentorId     String   @db.ObjectId
+  menteeId     String   @db.ObjectId
+  mentor       User     @relation("Mentor", fields: [mentorId], references: [id])
+  mentee       User     @relation("Mentee", fields: [menteeId], references: [id])
+
+  @@unique([mentorId, menteeId])
+}
+
+enum MentorshipStatus {
+  REQUESTED
+  ACTIVE
+  COMPLETED
+  CANCELLED
+}
+
+model Post {
+  id          String    @id @default(auto()) @map("_id") @db.ObjectId
+  title       String
+  content     String
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  category    PostCategory
+  likes       Int       @default(0)
+  userId      String    @db.ObjectId
+  user        User      @relation(fields: [userId], references: [id])
+  comments    Comment[]
+}
+
+enum PostCategory {
+  CAREER_ADVICE
+  COURSE_REVIEW
+  JOB_OPPORTUNITY
+  TECHNICAL_DISCUSSION
+  GENERAL
+}
+
+model Comment {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  content   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  userId    String   @db.ObjectId
+  postId    String   @db.ObjectId
+  user      User     @relation(fields: [userId], references: [id])
+  post      Post     @relation(fields: [postId], references: [id])
+}
