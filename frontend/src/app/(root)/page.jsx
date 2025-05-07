@@ -58,8 +58,8 @@ export default function Home() {
         title: "Junior Software Engineer",
         company: "Brain Station 23",
         match: "95%"
-      },
-      {
+    },
+    {
         title: "Frontend Developer",
         company: "Kaz Software",
         match: "88%"
@@ -125,7 +125,7 @@ export default function Home() {
           <div className="flex flex-col md:flex-row md:items-center md:space-x-8 mb-6 relative z-10">
             <div className="w-24 h-24 flex-shrink-0 bg-[#d35400] rounded-full flex items-center justify-center text-white mb-4 md:mb-0">
               <span className="text-3xl font-bold">{studentProfile.name.charAt(0)}</span>
-            </div>
+        </div>
             <div>
               <h1 className="text-2xl font-bold text-[#d35400] mb-1">{studentProfile.name}</h1>
               <p className="text-gray-600">{studentProfile.university}</p>
@@ -275,6 +275,38 @@ export default function Home() {
           </div>
         </div>
       </div>
+
+      {/* Featured Services */}
+      <section className="py-16 bg-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <h2 className="text-3xl bd-heading mb-2 text-center">Our Services</h2>
+          <p className="text-gray-600 mb-12 text-center">
+            Comprehensive tools for your career development journey
+          </p>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {/* Existing cards */}
+            
+            {/* New Collaboration Portal Card */}
+            <div className="bd-card flex flex-col h-full hover:shadow-lg transition-all duration-300">
+              <div className="h-14 w-14 rounded-full bg-[#e0f2f1] flex items-center justify-center mb-6">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-[#006a4e]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9" />
+                </svg>
+              </div>
+              <h3 className="text-xl font-semibold text-[#006a4e] mb-3">Cross-Industry Collaboration</h3>
+              <p className="text-gray-600 mb-6 flex-grow">
+                Connect with professionals from different industries to solve interdisciplinary challenges and bring innovative ideas to life.
+              </p>
+              <a href="/collaboration-portal" className="bd-button text-center py-2 rounded-lg">
+                Explore Portal
+              </a>
+            </div>
+            
+            {/* ... rest of the existing cards ... */}
+          </div>
+        </div>
+      </section>
     </div>
   );
 }

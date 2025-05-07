@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, BookOpen, Briefcase, Award, Users, MessageSquare, BarChart, User } from "lucide-react";
+import { Home, BookOpen, Briefcase, Award, Users, MessageSquare, BarChart, User, Globe } from "lucide-react";
 
 const navigationItems = [
   { name: "Dashboard", path: "/", icon: Home },
@@ -11,6 +11,7 @@ const navigationItems = [
   { name: "Skills", path: "/skills", icon: Award },
   { name: "Mentors", path: "/mentors", icon: Users },
   { name: "Community", path: "/community", icon: MessageSquare },
+  { name: "Collaboration Portal", path: "/collaboration-portal", icon: Globe },
   {
     name: "My Career",
     icon: BarChart,
