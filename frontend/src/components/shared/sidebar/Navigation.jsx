@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, BookOpen, Briefcase, Award, Users, MessageSquare, BarChart, User } from "lucide-react";
+import { Home, BookOpen, Briefcase, Award, Users, MessageSquare, BarChart, User, Video, Mic } from "lucide-react";
 
 const navigationItems = [
   { name: "Dashboard", path: "/", icon: Home },
@@ -18,6 +18,8 @@ const navigationItems = [
       { name: "Portfolio", path: "/portfolio", icon: User },
       { name: "Learning Path", path: "/learning-path", icon: Award },
       { name: "Applications", path: "/applications", icon: Briefcase },
+      { name: "Mock Interview", path: "/mock-interview", icon: Video },
+      { name: "AI Interviewer", path: "/realtime-interview", icon: Mic },
     ],
   },
 ];
@@ -42,8 +44,8 @@ const Navigation = ({ isCollapsed }) => {
                       key={child.path}
                       href={child.path}
                       className={`flex items-center px-3 py-2 rounded-md text-sm transition-colors ${
-                        pathname === child.path 
-                          ? "bg-[#aaffdd] text-[#006a4e] font-medium" 
+                        pathname === child.path
+                          ? "bg-[#aaffdd] text-[#006a4e] font-medium"
                           : "text-gray-600 hover:bg-gray-100"
                       }`}
                     >
@@ -58,9 +60,7 @@ const Navigation = ({ isCollapsed }) => {
             <Link
               href={item.path}
               className={`flex items-center px-3 py-2 rounded-md transition-colors ${isCollapsed ? "justify-center" : ""} ${
-                pathname === item.path 
-                  ? "bg-[#aaffdd] text-[#006a4e] font-medium" 
-                  : "text-gray-600 hover:bg-[#f5f5f5]"
+                pathname === item.path ? "bg-[#aaffdd] text-[#006a4e] font-medium" : "text-gray-600 hover:bg-[#f5f5f5]"
               }`}
             >
               <item.icon className={`h-5 w-5 ${pathname === item.path ? "text-[#006a4e]" : ""}`} />

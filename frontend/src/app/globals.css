@@ -135,7 +135,6 @@ body {
 }
 
 @keyframes bounce {
-
   0%,
   100% {
     transform: translateY(0);
@@ -233,23 +232,23 @@ body {
   .bd-gradient {
     background: linear-gradient(135deg, var(--bd-green) 0%, #036554 100%);
   }
-  
+
   .bd-card {
     @apply bg-white rounded-lg shadow-md hover:shadow-lg transition-all duration-300;
   }
-  
+
   .bd-button {
     @apply bg-[#006a4e] hover:bg-[#015a40] text-white font-medium py-2 px-4 rounded-md transition-colors duration-300;
   }
-  
+
   .bd-button-secondary {
     @apply bg-[#f42a41] hover:bg-[#d1253a] text-white font-medium py-2 px-4 rounded-md transition-colors duration-300;
   }
-  
+
   .bd-border {
     @apply border-[#006a4e] border-2;
   }
-  
+
   .bd-heading {
     @apply text-[#006a4e] font-bold;
   }
@@ -294,4 +293,131 @@ body {
   background: linear-gradient(90deg, var(--bd-green) 0%, var(--bd-green) 45%, var(--bd-red) 55%, var(--bd-red) 100%);
   -webkit-background-clip: text;
   color: transparent;
+}
+
+/* AI Interviewer Styles */
+.interviewer-container {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.interviewer-avatar {
+  transition: all 0.3s ease;
+  transform-origin: center;
+  filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.1));
+}
+
+.interviewer-avatar.speaking {
+  animation: subtle-pulse 2s infinite alternate;
+}
+
+@keyframes subtle-pulse {
+  0% {
+    transform: scale(1);
+    filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.1));
+  }
+  100% {
+    transform: scale(1.05);
+    filter: drop-shadow(0 8px 12px rgba(0, 0, 0, 0.15));
+  }
+}
+
+.recording-indicator {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background-color: rgb(220, 38, 38);
+  animation: pulse 1.5s infinite;
+  box-shadow: 0 0 5px rgba(220, 38, 38, 0.5);
+}
+
+/* Responsive styles for the interview page */
+@media (max-width: 768px) {
+  .interviewer-avatar img {
+    width: 120px;
+    height: 120px;
+  }
+}
+
+/* Markdown content styling */
+.prose {
+  color: #374151;
+}
+
+.prose h1,
+.prose h2,
+.prose h3,
+.prose h4,
+.prose h5,
+.prose h6 {
+  color: #4f46e5;
+  margin-top: 1.5em;
+  margin-bottom: 0.5em;
+}
+
+.prose strong {
+  color: #1e40af;
+}
+
+.prose ul {
+  list-style-type: disc;
+  margin-left: 1.5em;
+  margin-top: 0.5em;
+  margin-bottom: 0.5em;
+}
+
+.prose ol {
+  list-style-type: decimal;
+  margin-left: 1.5em;
+  margin-top: 0.5em;
+  margin-bottom: 0.5em;
+}
+
+.prose a {
+  color: #3b82f6;
+  text-decoration: underline;
+}
+
+/* Keep the invert prose for dark mode compatibility */
+.prose-invert {
+  color: white;
+}
+
+.prose-invert h1,
+.prose-invert h2,
+.prose-invert h3,
+.prose-invert h4,
+.prose-invert h5,
+.prose-invert h6 {
+  color: #93c5fd;
+  margin-top: 1.5em;
+  margin-bottom: 0.5em;
+}
+
+.prose-invert strong {
+  color: #dbeafe;
+}
+
+.prose-invert ul {
+  list-style-type: disc;
+  margin-left: 1.5em;
+  margin-top: 0.5em;
+  margin-bottom: 0.5em;
+}
+
+.prose-invert ol {
+  list-style-type: decimal;
+  margin-left: 1.5em;
+  margin-top: 0.5em;
+  margin-bottom: 0.5em;
+}
+
+.prose-invert a {
+  color: #60a5fa;
+  text-decoration: underline;
 }
