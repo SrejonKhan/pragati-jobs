@@ -7,7 +7,8 @@ const openai = new OpenAI({
 
 export async function POST(request) {
   try {
-    const { transcription, question, model = 'gpt-4o-realtime-preview' } = await request.json();
+    const { transcription, question } = await request.json();
+    const model = "gpt-4";
     
     if (!transcription) {
       return NextResponse.json({ error: 'No transcription provided' }, { status: 400 });
@@ -30,7 +31,7 @@ export async function POST(request) {
       Keep your feedback concise, supportive, and actionable.
     `;
     
-    // Call GPT-4o API
+    // Call GPT API with standard model
     const completion = await openai.chat.completions.create({
       model,
       messages: [

@@ -11,7 +11,9 @@ export async function POST(request) {
     const video = formData.get('video');
     const transcription = formData.get('transcription') || "No transcription available";
     const question = formData.get('question') || "Unknown question";
-    const model = formData.get('model') || 'gpt-4o-realtime-preview';
+    
+    // Use a standard model that's definitely supported
+    const model = "gpt-4";
 
     if (!video && !transcription) {
       return NextResponse.json(
@@ -20,7 +22,7 @@ export async function POST(request) {
       );
     }
 
-    // Process the transcription with GPT-4o
+    // Process the transcription with GPT
     const prompt = `
       You are an expert interviewer and career coach providing detailed feedback on an interview response.
       
@@ -65,7 +67,7 @@ export async function POST(request) {
       temperature: 0.7,
     });
 
-    // Extract feedback from GPT-4o response
+    // Extract feedback from GPT response
     const feedback = completion.choices[0].message.content.trim();
 
     return NextResponse.json({ 

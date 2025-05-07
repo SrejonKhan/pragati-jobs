@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 // Configuration for OpenAI services
 const OPENAI_CONFIG = {
   whisperModel: 'whisper-1',
-  gptModel: 'gpt-4o-realtime-preview'
+  gptModel: 'gpt-4'
 };
 
 const mockQuestions = [
@@ -276,7 +276,6 @@ const useWhisperTranscription = (isRecording, isManualMode) => {
       // Create form data for API request
       const formData = new FormData();
       formData.append('file', audioBlob, 'audio.webm');
-      formData.append('model', OPENAI_CONFIG.whisperModel);
       
       // Send to our backend API that will proxy to OpenAI
       const response = await fetch('/api/transcribe', {
@@ -442,14 +441,13 @@ export default function MockInterview() {
     }
   };
   
-  // Process recording with GPT-4o
+  // Process recording with GPT-4
   const processRecording = async (blob) => {
     setIsProcessing(true);
     try {
       const formData = new FormData();
       formData.append('video', blob);
       formData.append('transcription', isManualMode ? manualTranscript : fullTranscript);
-      formData.append('model', OPENAI_CONFIG.gptModel);
       formData.append('question', mockQuestions[currentQuestion].question);
       
       const response = await fetch('/api/process-interview', {
@@ -469,7 +467,7 @@ export default function MockInterview() {
     }
   };
   
-  // Get real-time feedback using GPT-4o
+  // Get real-time feedback using GPT-4
   const startRealTimeFeedback = () => {
     // Set up interval to periodically check transcript and provide feedback
     const feedbackInterval = setInterval(async () => {
@@ -486,8 +484,7 @@ export default function MockInterview() {
           },
           body: JSON.stringify({
             transcription: fullTranscript,
-            question: mockQuestions[currentQuestion].question,
-            model: OPENAI_CONFIG.gptModel
+            question: mockQuestions[currentQuestion].question
           })
         });
         
@@ -511,7 +508,6 @@ export default function MockInterview() {
     try {
       const formData = new FormData();
       formData.append('transcription', manualTranscript);
-      formData.append('model', OPENAI_CONFIG.gptModel);
       formData.append('question', mockQuestions[currentQuestion].question);
       
       if (videoBlob) {
@@ -580,7 +576,7 @@ export default function MockInterview() {
             </h1>
             <p className="text-gray-300">
               Practice your interview skills with our AI interviewer.
-              Get real-time transcription with Whisper and feedback powered by GPT-4o.
+              Get real-time transcription with Whisper and feedback powered by GPT-4.
             </p>
             <button
               onClick={startInterview}
@@ -756,7 +752,7 @@ export default function MockInterview() {
               {/* Final Feedback Section */}
               {feedback && (
                 <div className="mt-4 p-4 bg-[#006064] bg-opacity-10 rounded-lg border border-[#006064] border-opacity-20">
-                  <h3 className="text-sm font-medium text-[#006064] mb-2">AI Feedback (GPT-4o):</h3>
+                  <h3 className="text-sm font-medium text-[#006064] mb-2">AI Feedback (GPT-4):</h3>
                   <p className="text-[#006064] whitespace-pre-line">{feedback}</p>
                 </div>
               )}

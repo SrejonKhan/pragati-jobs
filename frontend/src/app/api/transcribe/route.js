@@ -18,8 +18,8 @@ export async function POST(request) {
     const audioBlob = new Blob([await audioFile.arrayBuffer()], { type: audioFile.type });
     const buffer = Buffer.from(await audioBlob.arrayBuffer());
     
-    // Get model from form data or use default
-    const model = formData.get('model') || 'whisper-1';
+    // Always use the standard Whisper model
+    const model = "whisper-1";
     
     // Process with Whisper API
     const transcription = await openai.audio.transcriptions.create({
@@ -29,8 +29,7 @@ export async function POST(request) {
         type: audioFile.type,
       },
       model,
-      language: 'en', // Can be made dynamic later
-      response_format: 'json',
+      language: 'en',
     });
     
     return NextResponse.json({ text: transcription.text });
