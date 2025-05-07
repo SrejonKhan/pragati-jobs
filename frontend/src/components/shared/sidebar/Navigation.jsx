@@ -3,7 +3,20 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-import { Home, BookOpen, Briefcase, Award, Users, MessageSquare, BarChart, User, Globe, Target, Video } from "lucide-react";
+import {
+  Home,
+  BookOpen,
+  Briefcase,
+  Award,
+  Users,
+  MessageSquare,
+  BarChart,
+  User,
+  Globe,
+  Target,
+  Video,
+  Mic,
+} from "lucide-react";
 
 const navigationItems = [
   { name: "Dashboard", path: "/", icon: Home },
